@@ -1,0 +1,44 @@
+#!/bin/bash
+set -ueo pipefail
+
+DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd)"
+
+# shellcheck source=lib/shared.bash
+. "$DIR/../lib/shared.bash"
+# shellcheck source=lib/metadata.bash
+. "$DIR/../lib/metadata.bash"
+
+commands=()
+
+[[ -n "$(plugin_read_list BUILD)" ]] && commands+=("BUILD")
+[[ -n "$(plugin_read_list RUN)" ]] && commands+=("RUN")
+[[ -n "$(plugin_read_list PUSH)" ]] && commands+=("PUSH")
+
+# Don't convert paths on gitbash on windows
+if is_windows ; then
+  export MSYS_NO_PATHCONV=1
+fi
+
+if [[ ${#commands[@]} -lt 1 ]] ; then
+  echo "+++ Docker Compose plugin error"
+  echo "No build, run or push options were specified"
+  exit 1
+fi
+
+# Dispatch to the command file
+if in_array "BUILD" "${commands[@]}" ; then
+  # shellcheck source=commands/build.sh
+  . "$DIR/../commands/build.sh"
+fi
+if in_array "RUN" "${commands[@]}" ; then
+  # shellcheck source=lib/run.bash
+  . "$DIR/../lib/run.bash"
+  # shellcheck source=commands/run.sh
+  . "$DIR/../commands/run.sh"
+fi
+if in_array "PUSH" "${commands[@]}" ; then
+  # shellcheck source=lib/push.bash
+  . "$DIR/../lib/push.bash"
+  # shellcheck source=commands/push.sh
+  . "$DIR/../commands/push.sh"
+fi
